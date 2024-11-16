@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo de Damas</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+
+        #tabuleiro {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(8, 50px);
+            margin-top: 20px;
+        }
+
+        .casa {
+            width: 50px;
+            height: 50px;
+        }
+
+        .casa:nth-child(odd) {
+            background-color: #eee;
+        }
+
+        .casa:nth-child(even) {
+            background-color: #333;
+        }
+
+        .peca {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .peca.vermelha {
+            background-color: red;
+        }
+
+        .peca.preta {
+            background-color: black;
+        }
+
+        .selecionada {
+            border: 2px solid yellow;
+        }
+    </style>
+</head>
+<body>
+    <h1>Jogo de Damas</h1>
+    <div id="tabuleiro"></div>
+    <script>
+        const tabuleiro = document.getElementById('tabuleiro');
+        let selecionada = null;
+        let jogadorAtual = 'vermelha';
+
+        // Cria o tabuleiro e as peças
+        for (let i = 0; i < 64; i++) {
+            const casa = document.createElement('div');
+            casa.classList.add('casa');
+            tabuleiro.appendChild(casa);
+
+            // Adiciona peças vermelhas
+            if (i < 24 && (Math.floor(i / 8) % 2 !== i % 2)) {
+                const peca = document.createElement('div');
+                peca.classList.add('peca', 'vermelha');
+                casa.appendChild(peca);
+            }
+            // Adiciona peças pretas
+            if (i >= 40 && (Math.floor(i / 8) % 2 !== i % 2)) {
+                const peca = document.createElement('div');
+                peca.classList.add('peca', 'preta');
+                casa.appendChild(peca);
+            }
+
+            // Adiciona evento de clique
+            casa.addEventListener('click', () => {
+                if (selecionada) {
+                    moverPeca(casa);
+                } else if (casa.firstChild && casa.firstChild.classList.contains(jogadorAtual)) {
+                    selecionarPeca(casa.firstChild);
+                }
+            });
+        }
+
+        // Seleciona uma peça
+        function selecionarPeca(peca) {
+            selecionada = peca;
+            selecionada.classList.add('selecionada');
+        }
+
+        // Move a peça
+        function moverPeca(casaDestino) {
+            if (casaDestino.childElementCount === 0) {
+                casaDestino.appendChild(selecionada);
+                selecionada.classList.remove('selecionada');
+                selecionada = null;
+                jogadorAtual = jogadorAtual === 'vermelha' ? 'preta' : 'vermelha';
+            }
+        }
+    </script>
+</body>
+</html>
