@@ -1,111 +1,136 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jogo de Damas</title>
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-family: Arial, sans-serif;
-        }
+import pygame
+import sys
+import random
+import time
 
-        #tabuleiro {
-            display: grid;
-            grid-template-columns: repeat(8, 50px);
-            grid-template-rows: repeat(8, 50px);
-            margin-top: 20px;
-        }
+# Inicializar o Pygame
+pygame.init()
 
-        .casa {
-            width: 50px;
-            height: 50px;
-        }
+# Configurações básicas
+LARGURA, ALTURA = 800, 800
+TAMANHO_QUADRADO = LARGURA // 8
+CORES = {
+    "preto": (0, 0, 0),
+    "branco": (255, 255, 255),
+    "vermelho": (255, 0, 0),
+    "cinza": (192, 192, 192),
+    "amarelo": (255, 255, 0),
+    "verde": (0, 255, 0),
+    "azul": (0, 0, 255),
+}
 
-        .casa:nth-child(odd) {
-            background-color: #eee;
-        }
+# Criar a tela
+tela = pygame.display.set_mode((LARGURA, ALTURA))
+pygame.display.set_caption("Jogo de Damas com IA Avançada")
 
-        .casa:nth-child(even) {
-            background-color: #333;
-        }
+# Função para desenhar o tabuleiro
+def desenhar_tabuleiro():
+    for linha in range(8):
+        for coluna in range(8):
+            cor = CORES["branco"] if (linha + coluna) % 2 == 0 else CORES["preto"]
+            pygame.draw.rect(
+                tela,
+                cor,
+                (coluna * TAMANHO_QUADRADO, linha * TAMANHO_QUADRADO, TAMANHO_QUADRADO, TAMANHO_QUADRADO),
+            )
 
-        .peca {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+# Criar peças
+def criar_pecas():
+    pecas = []
+    for linha in range(8):
+        for coluna in range(8):
+            if linha < 3 and (linha + coluna) % 2 != 0:
+                pecas.append({"cor": "vermelho", "linha": linha, "coluna": coluna, "dama": False})
+            elif linha > 4 and (linha + coluna) % 2 != 0:
+                pecas.append({"cor": "cinza", "linha": linha, "coluna": coluna, "dama": False})
+    return pecas
 
-        .peca.vermelha {
-            background-color: red;
-        }
+# Função para desenhar peças
+def desenhar_pecas(pecas):
+    for peca in pecas:
+        linha, coluna = peca["linha"], peca["coluna"]
+        pos_x = coluna * TAMANHO_QUADRADO + TAMANHO_QUADRADO // 2
+        pos_y = linha * TAMANHO_QUADRADO + TAMANHO_QUADRADO // 2
+        cor = CORES[peca["cor"]]
+        raio = TAMANHO_QUADRADO // 3
+        pygame.draw.circle(tela, cor, (pos_x, pos_y), raio)
+        if peca["dama"]:
+            pygame.draw.circle(tela, CORES["amarelo"], (pos_x, pos_y), raio // 2)
 
-        .peca.preta {
-            background-color: black;
-        }
+# Função para destacar casas válidas
+def destacar_casas(movimentos):
+    for movimento in movimentos:
+        linha, coluna = movimento[0], movimento[1]
+        pos_x = coluna * TAMANHO_QUADRADO + TAMANHO_QUADRADO // 2
+        pos_y = linha * TAMANHO_QUADRADO + TAMANHO_QUADRADO // 2
+        pygame.draw.circle(tela, CORES["verde"], (pos_x, pos_y), TAMANHO_QUADRADO // 6)
 
-        .selecionada {
-            border: 2px solid yellow;
-        }
-    </style>
-</head>
-<body>
-    <h1>Jogo de Damas</h1>
-    <div id="tabuleiro"></div>
-    <script>
-        const tabuleiro = document.getElementById('tabuleiro');
-        let selecionada = null;
-        let jogadorAtual = 'vermelha';
+# Função para calcular movimentos válidos
+def movimentos_validos(pecas, selecionada):
+    movimentos = []
+    direcoes = [-1, 1] if selecionada["dama"] else [-1] if selecionada["cor"] == "vermelho" else [1]
 
-        // Cria o tabuleiro e as peças
-        for (let i = 0; i < 64; i++) {
-            const casa = document.createElement('div');
-            casa.classList.add('casa');
-            tabuleiro.appendChild(casa);
+    for d in direcoes:
+        for dc in [-1, 1]:
+            nova_linha = selecionada["linha"] + d
+            nova_coluna = selecionada["coluna"] + dc
+            if 0 <= nova_linha < 8 and 0 <= nova_coluna < 8:
+                ocupado = next((p for p in pecas if p["linha"] == nova_linha and p["coluna"] == nova_coluna), None)
+                if not ocupado:
+                    movimentos.append((nova_linha, nova_coluna))
+                elif ocupado["cor"] != selecionada["cor"]:
+                    salto_linha = nova_linha + d
+                    salto_coluna = nova_coluna + dc
+                    if 0 <= salto_linha < 8 and 0 <= salto_coluna < 8:
+                        salto_ocupado = next((p for p in pecas if p["linha"] == salto_linha and p["coluna"] == salto_coluna), None)
+                        if not salto_ocupado:
+                            movimentos.append((salto_linha, salto_coluna, ocupado))
+    return movimentos
 
-            // Adiciona peças vermelhas
-            if (i < 24 && (Math.floor(i / 8) % 2 !== i % 2)) {
-                const peca = document.createElement('div');
-                peca.classList.add('peca', 'vermelha');
-                casa.appendChild(peca);
-            }
-            // Adiciona peças pretas
-            if (i >= 40 && (Math.floor(i / 8) % 2 !== i % 2)) {
-                const peca = document.createElement('div');
-                peca.classList.add('peca', 'preta');
-                casa.appendChild(peca);
-            }
+# Função Minimax com poda alpha-beta
+def minimax(pecas, profundidade, maximizando, alpha, beta):
+    if profundidade == 0 or jogo_terminado(pecas):
+        return avaliar_tabuleiro(pecas), None
 
-            // Adiciona evento de clique
-            casa.addEventListener('click', () => {
-                if (selecionada) {
-                    moverPeca(casa);
-                } else if (casa.firstChild && casa.firstChild.classList.contains(jogadorAtual)) {
-                    selecionarPeca(casa.firstChild);
-                }
-            });
-        }
+    melhor_movimento = None
+    if maximizando:
+        max_avaliacao = -float("inf")
+        for movimento in gerar_movimentos(pecas, "cinza"):
+            nova_pecas = simular_movimento(pecas, movimento)
+            avaliacao, _ = minimax(nova_pecas, profundidade - 1, False, alpha, beta)
+            if avaliacao > max_avaliacao:
+                max_avaliacao = avaliacao
+                melhor_movimento = movimento
+            alpha = max(alpha, avaliacao)
+            if beta <= alpha:
+                break
+        return max_avaliacao, melhor_movimento
+    else:
+        min_avaliacao = float("inf")
+        for movimento in gerar_movimentos(pecas, "vermelho"):
+            nova_pecas = simular_movimento(pecas, movimento)
+            avaliacao, _ = minimax(nova_pecas, profundidade - 1, True, alpha, beta)
+            if avaliacao < min_avaliacao:
+                min_avaliacao = avaliacao
+                melhor_movimento = movimento
+            beta = min(beta, avaliacao)
+            if beta <= alpha:
+                break
+        return min_avaliacao, melhor_movimento
 
-        // Seleciona uma peça
-        function selecionarPeca(peca) {
-            selecionada = peca;
-            selecionada.classList.add('selecionada');
-        }
+# Funções auxiliares para a IA
+def gerar_movimentos(pecas, cor):
+    movimentos = []
+    for peca in pecas:
+        if peca["cor"] == cor:
+            movimentos += movimentos_validos(pecas, peca)
+    return movimentos
 
-        // Move a peça
-        function moverPeca(casaDestino) {
-            if (casaDestino.childElementCount === 0) {
-                casaDestino.appendChild(selecionada);
-                selecionada.classList.remove('selecionada');
-                selecionada = null;
-                jogadorAtual = jogadorAtual === 'vermelha' ? 'preta' : 'vermelha';
-            }
-        }
-    </script>
-</body>
-</html>
+def simular_movimento(pecas, movimento):
+    nova_pecas = [p.copy() for p in pecas]
+    # Aplicar movimento simulado
+    return nova_pecas
+
+def avaliar_tabuleiro(pecas):
+    # Heurística simples: diferença no número de peças
+    return sum(1 if p["cor"] == "cinza" else -1 for p in pecas)
